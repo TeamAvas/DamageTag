@@ -28,17 +28,6 @@ final class DamageTag extends PluginBase implements Listener{
         $this->getServer()->getPluginManager()->registerEvents($this, $this);
     }
 
-    /** @return Player[] */
-    private function getPlayersByRadius(Position $position, float $radius): array{
-        $players = [];
-        foreach ($position->getWorld()->getPlayers() as $player) {
-            if ($position->distance($player->getPosition()) <= $radius)
-                $players[] = $player;
-        }
-
-        return $players;
-    }
-
     public function onEntityAttack(EntityDamageEvent $event): void{
         if ($event->isCancelled())
             return;
@@ -50,14 +39,14 @@ final class DamageTag extends PluginBase implements Listener{
         if (!($player = $event->getDamager()) instanceof Player)
             return;
 
-        $this->placeDamageTag($event->getEntity()->getPosition(), $event->getFinalDamage());
+        $this->placeDamageTag($player, $event->getEntity()->getPosition(), $event->getFinalDamage());
     }
 
     private function isConsistentEvent(EntityDamageEvent $event): bool{
         return $event instanceof EntityDamageByChildEntityEvent or $event instanceof EntityDamageByEntityEvent;
     }
 
-    public function placeDamageTag(Position $position, float $damage): void{
+    public function placeDamageTag(Player $player, Position $position, float $damage): void{
         $pk = new AddPlayerPacket();
         $pk->entityRuntimeId = $pk->entityUniqueId = Entity::nextRuntimeId();
         $pk->position = $position->add(0, 1, 0);
@@ -71,14 +60,10 @@ final class DamageTag extends PluginBase implements Listener{
 
         $packet = RemoveActorPacket::create($pk->entityRuntimeId);
 
-        $players = $this->getPlayersByRadius($position, 18.5);
+        $player->getNetworkSession()->sendDataPacket($pk);
 
-        foreach ($players as $player)
-            $player->getNetworkSession()->sendDataPacket($pk);
-
-        $this->getScheduler()->scheduleDelayedTask(new ClosureTask(function () use ($players, $packet): void{
-            foreach ($players as $player)
-                $player->getNetworkSession()->sendDataPacket($packet);
+        $this->getScheduler()->scheduleDelayedTask(new ClosureTask(function () use ($player, $packet): void{
+            $player->getNetworkSession()->sendDataPacket($packet);
         }), 45);
     }
 }
