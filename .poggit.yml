@@ -1,0 +1,8 @@
+--- # Poggit-CI Manifest. Open the CI at https://poggit.pmmp.io/ci/TeamAvas/DamageTag
+build-by-default: true
+branches:
+- master-pm4
+projects:
+  DamageTag:
+    path: ""
+...
